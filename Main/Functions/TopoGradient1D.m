@@ -38,13 +38,41 @@ else
 end
 StartPattern = DevicePattern * (OptParm.Geometry.Level -1);
 
+% Define full device stack
+Nz = ceil(OptParm.Geometry.Thickness/OptParm.Simulation.ZGrid);
+DeviceProfile = {[0, ones(1,Nz)*OptParm.Simulation.ZGrid, 0],...
+    [1, Nz, Nz+1]};
 
 % Generate binarization parameter B
 BVector = GenerateBVector(MaxIterations, OptParm.Optimization.Binarize);
+% Generate thresholding parameters for robustness
+[ThresholdVectors, NRobustness] = GenerateThreshVectors(OptParm);
+
+% Compute blur radii in grid units
+BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/GridScale;
+BlurGrid = OptParm.Optimization.Filter.BlurRadius/GridScale;
+Figs = [];
+% Initializing plot for geometries
+if OptParm.Display.PlotGeometry 
+    Figs.FigGeo = OptParm.Display.FigGeo;
+end
+
+% Initializing plot for geometries
+if OptParm.Display.PlotEfficiency
+    Figs.FigEff = OptParm.Display.FigEff;
+end
+
+
+% Store efficiency at each iteration
+AbsoluteEfficiency = zeros(MaxIterations,NRobustness,NumPol);
+RelativeEfficiency = zeros(MaxIterations,NRobustness,NumPol);
 
 %Main optimization loop
 for iter = iterStart:MaxIterations
     tic;
+    % First filter to enforce binarization
+    
+    
     % Begin robustness loop
     % Can be changed to parfor as necessary
     for robustIter = 1:NRobustness
