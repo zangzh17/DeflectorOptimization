@@ -25,14 +25,22 @@ else
 end
 NumPol = length(Polarizations); 
 
+% Define grid for the device
+[xGrid, ~, GridScale] = DefineGrid(OptParm.Simulation.Grid, Period, Wavelength);
+N = length(xGrid); %Number of x grid points
+
 % If no starting point is given, generate a random starting point
 if isempty(OptParm.Optimization.Start)
     DevicePattern = OptParm.Optimization.RandomStart;
 else
-    DevicePattern = RandomStart1D(OptParm.Geometry.PixelNum, OptParm.Geometry.Level, OptParm.Optimization.RandomStart);
+    DevicePattern = RandomStart(N,1,Period,...
+        OptParm.Optimization.RandomStart,0,0);
 end
-StartPattern = DevicePattern;
+StartPattern = DevicePattern * (OptParm.Geometry.Level -1);
 
+
+% Generate binarization parameter B
+BVector = GenerateBVector(MaxIterations, OptParm.Optimization.Binarize);
 
 %Main optimization loop
 for iter = iterStart:MaxIterations

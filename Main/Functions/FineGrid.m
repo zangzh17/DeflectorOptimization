@@ -1,17 +1,29 @@
 % Transfers the pattern onto a finer/coarser grid specifid by the scaling
 % factor Scale
-function [PatternOut,XOut,YOut] = FineGrid(PatternIn,Period,Scale,Binarize,SmoothGeom)
+function [PatternOut,XOut,YOut] = FineGrid(PatternIn,Period,Scale,SmoothGeom)
 
 Pattern = PatternIn;
 [Nx, Ny] = size(PatternIn); % Size of input pattern
 % Compute size of output pattern
-NScaled = round(Scale.*[Nx Ny]);
-NxScaled = NScaled(1);
-NyScaled = NScaled(2);
+if length(Scale)==1
+    if Nx==1
+        NxScaled = 1;
+        NyScaled = round(Scale.*Ny);
+        if length(Period)==1, Period = [0,Period]; end
+    elseif Ny==1
+        NxScaled = round(Scale.*Nx);
+        NyScaled = 1;
+        if length(Period)==1, Period = [Period,0]; end
+    end
+else
+    NxScaled = round(Scale(1).*Nx);
+    NyScaled = round(Scale(2).*Ny);
+end
+
 
 % Blur pattern if option is specfied
 if SmoothGeom == 1
-    Pattern = imgaussfilt(Pattern,Ny/50,'Padding','circular');
+    Pattern = imgaussfilt(Pattern,min(Nx,Ny)/20,'Padding','circular');
 end
 
 % Add extra pixels in order to allow for periodic interpolation
@@ -24,13 +36,8 @@ Pattern = [Pattern(end,:);Pattern];
         linspace(Ny/NyScaled,Ny,NyScaled));
 % Output coordinates
 % Scaled grid
-if length(Period)>1
-    [XOut,YOut] = meshgrid(linspace(0,Period(1),NxScaled),...
+[XOut,YOut] = meshgrid(linspace(0,Period(1),NxScaled),...
         linspace(0,Period(2),NyScaled));
-else
-    XOut = linspace(0,Period(1),NxScaled);
-    YOut = 0;
-end
 
 if SmoothGeom == 1
     % Use interpolation if smooth geometry is desired
@@ -46,9 +53,4 @@ else
     end
 end
 
-%Binarize if desired
-if Binarize==1
-    PatternOut(PatternOut<0.5) = 0;
-    PatternOut(PatternOut>=0.5) = 1;
-end
 end

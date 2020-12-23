@@ -1,15 +1,22 @@
-% Compute the simulation grid (in nm) for given geometry
+% Compute the simulation grid for given geometry
+ % Grid: Grid points per wavelength 
 function [xGrid, yGrid, dr] = DefineGrid(Grid, Period, Wavelength)
     
     %Number of grid points
     NGrid = ceil(Grid*Period/Wavelength);
-    Nx = NGrid(1);
-    Ny = NGrid(2);
-    
-    %Device period
-    Px = Period(1);
-    Py = Period(2);
-    
+    if length(Period)==1
+        Nx = NGrid;
+        Ny = 1;
+        %Device period
+        Px = Period;
+        Py = 0;
+    else
+        Nx = NGrid(1);
+        Ny = NGrid(2);
+        %Device period
+        Px = Period(1);
+        Py = Period(2);
+    end
     %Compute external grid coordinates
     xBounds = linspace(0,Px,Nx+1); 
     yBounds = linspace(0,Py,Ny+1);
@@ -23,5 +30,10 @@ function [xGrid, yGrid, dr] = DefineGrid(Grid, Period, Wavelength)
     yGrid = yBounds(2:end)- 0.5*dy;
     
     %Compute average grid size
-    dr = mean([dx dy]);
+    if length(Period)==1
+        dr = dx;
+    else
+        dr = mean([dx dy]);
+    end
+    
 end
