@@ -34,3 +34,11 @@ end
 StartPattern = DevicePattern;
 
 
+%Main optimization loop
+for iter = iterStart:MaxIterations
+    tic;
+    % Begin robustness loop
+    % Can be changed to parfor as necessary
+    for robustIter = 1:NRobustness
+
+

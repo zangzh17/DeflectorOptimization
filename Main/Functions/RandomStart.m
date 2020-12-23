@@ -7,7 +7,11 @@ function PatternOut = RandomStart(Nx,Ny,Period,RandParm,SymX,SymY)
     RandAverage = RandParm.Average;
     RandSigma = RandParm.Sigma;
     NCellsX = ceil(2*Period(1)/Pitch);
-    NCellsY = ceil(2*Period(2)/Pitch);
+    if length(Period)>1
+        NCellsY = ceil(2*Period(2)/Pitch);
+    else
+        NCellsY = 1;
+    end
     GridSize = Period(1)/Nx;
 
     % Normally distributed index of refractions

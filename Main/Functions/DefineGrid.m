@@ -1,4 +1,4 @@
-% Compute the simulation grid for given geometry
+% Compute the simulation grid (in nm) for given geometry
 function [xGrid, yGrid, dr] = DefineGrid(Grid, Period, Wavelength)
     
     %Number of grid points

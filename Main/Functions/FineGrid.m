@@ -4,7 +4,6 @@ function [PatternOut,XOut,YOut] = FineGrid(PatternIn,Period,Scale,Binarize,Smoot
 
 Pattern = PatternIn;
 [Nx, Ny] = size(PatternIn); % Size of input pattern
-
 % Compute size of output pattern
 NScaled = round(Scale.*[Nx Ny]);
 NxScaled = NScaled(1);
@@ -21,14 +20,17 @@ Pattern = [Pattern(end,:);Pattern];
 
 % Input grid
 [X,Y] = meshgrid(0:Nx,0:Ny);
-
-% Scaled grid
 [XScaled,YScaled] = meshgrid(linspace(Nx/NxScaled,Nx,NxScaled),...
-    linspace(Ny/NyScaled,Ny,NyScaled));
-
+        linspace(Ny/NyScaled,Ny,NyScaled));
 % Output coordinates
-[XOut,YOut] = meshgrid(linspace(0,Period(1),NxScaled),...
-    linspace(0,Period(2),NyScaled));
+% Scaled grid
+if length(Period)>1
+    [XOut,YOut] = meshgrid(linspace(0,Period(1),NxScaled),...
+        linspace(0,Period(2),NyScaled));
+else
+    XOut = linspace(0,Period(1),NxScaled);
+    YOut = 0;
+end
 
 if SmoothGeom == 1
     % Use interpolation if smooth geometry is desired
