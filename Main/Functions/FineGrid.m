@@ -23,15 +23,32 @@ end
 
 % Blur pattern if option is specfied
 if SmoothGeom == 1
-    Pattern = imgaussfilt(Pattern,min(Nx,Ny)/20,'Padding','circular');
+    Pattern = imgaussfilt(Pattern,max(Nx,Ny)/50,'Padding','circular');
 end
 
 % Add extra pixels in order to allow for periodic interpolation
-Pattern = [Pattern(:,end),Pattern];
-Pattern = [Pattern(end,:);Pattern];
+if length(Scale)==1
+    if Nx==1
+        Pattern = [Pattern(end),Pattern];
+    elseif Ny==1
+        Pattern = [Pattern(end);Pattern];
+    end
+else
+    Pattern = [Pattern(:,end),Pattern];
+    Pattern = [Pattern(end,:);Pattern];
+end
 
 % Input grid
-[X,Y] = meshgrid(0:Nx,0:Ny);
+if length(Scale)==1
+    if Nx==1
+        [X,Y] = meshgrid(0,0:Ny);
+    elseif Ny==1
+        [X,Y] = meshgrid(0:Nx,0);
+    end
+else
+    [X,Y] = meshgrid(0:Nx,0:Ny);
+end
+
 [XScaled,YScaled] = meshgrid(linspace(Nx/NxScaled,Nx,NxScaled),...
         linspace(Ny/NyScaled,Ny,NyScaled));
 % Output coordinates
@@ -43,10 +60,10 @@ if SmoothGeom == 1
     % Use interpolation if smooth geometry is desired
     if length(Scale)==1
         if Nx==1
-        else
-            
+            PatternOut = interp1(Y,Pattern',YScaled,'PCHIP')';
+        elseif Ny==1
+            PatternOut = interp1(X,Pattern',XScaled,'PCHIP')';
         end
-        
     else
         PatternOut = interp2(X,Y,Pattern',XScaled,YScaled,'cubic')';
     end
