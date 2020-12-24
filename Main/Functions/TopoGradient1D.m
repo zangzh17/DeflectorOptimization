@@ -36,9 +36,10 @@ else
     DevicePattern = RandomStart(N,1,Period,...
         OptParm.Optimization.RandomStart,0,0);
 end
-StartPattern = DevicePattern * (OptParm.Geometry.Level -1);
+DevicePattern = DevicePattern * (OptParm.Geometry.Level -1);
+StartPattern = DevicePattern;
 
-% Define full device stack
+% Define device stack of Nz layers for simulation
 Nz = ceil(OptParm.Geometry.Thickness/OptParm.Simulation.ZGrid);
 DeviceProfile = {[0, ones(1,Nz)*OptParm.Simulation.ZGrid, 0],...
     [1, Nz, Nz+1]};
@@ -48,9 +49,6 @@ BVector = GenerateBVector(MaxIterations, OptParm.Optimization.Binarize);
 % Generate thresholding parameters for robustness
 [ThresholdVectors, NRobustness] = GenerateThreshVectors(OptParm);
 
-% Compute blur radii in grid units
-BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/GridScale;
-BlurGrid = OptParm.Optimization.Filter.BlurRadius/GridScale;
 Figs = [];
 % Initializing plot for geometries
 if OptParm.Display.PlotGeometry 
@@ -66,15 +64,45 @@ end
 % Store efficiency at each iteration
 AbsoluteEfficiency = zeros(MaxIterations,NRobustness,NumPol);
 RelativeEfficiency = zeros(MaxIterations,NRobustness,NumPol);
+% Compute blur radii [in grid units]
+BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/GridScale;
+BlurGrid = OptParm.Optimization.Filter.BlurRadius/GridScale;
 
 %Main optimization loop
 for iter = iterStart:MaxIterations
     tic;
-    % First filter to enforce binarization
+    % initial blurring of radius R=BlurGridLarge
+    FilteredPattern = DensityFilter2D(DevicePattern,BlurGridLarge);
+    % enforce binarization
+    BinaryPattern = LevelFilter(FilteredPattern,BVector(iter),0.5);
     
+    GradientsAll = cell([NRobustness, 1]);
+    DispPattern = cell([NRobustness, 1]);
     
     % Begin robustness loop
     % Can be changed to parfor as necessary
     for robustIter = 1:NRobustness
+        % Second filter to model physical edge deviations
+        FilteredPattern2 = GaussFilter2D(BinaryPattern,BlurGrid);
+        FinalPattern = ThreshFilter(FilteredPattern2,BVector(iter),ThresholdVectors(robustIter, iter));
+        DispPattern{robustIter} = FinalPattern;
+        
+        % Define textures for each layer
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
