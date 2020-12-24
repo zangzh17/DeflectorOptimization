@@ -41,7 +41,15 @@ Pattern = [Pattern(end,:);Pattern];
 
 if SmoothGeom == 1
     % Use interpolation if smooth geometry is desired
-    PatternOut = interp2(X,Y,Pattern',XScaled,YScaled,'cubic')';
+    if length(Scale)==1
+        if Nx==1
+        else
+            
+        end
+        
+    else
+        PatternOut = interp2(X,Y,Pattern',XScaled,YScaled,'cubic')';
+    end
 else
     % Place pixels on a square grid otherwise
     PatternOut = zeros([NxScaled NyScaled]);

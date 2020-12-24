@@ -31,7 +31,8 @@ N = length(xGrid); %Number of x grid points
 
 % If no starting point is given, generate a random starting point
 if isempty(OptParm.Optimization.Start)
-    DevicePattern = OptParm.Optimization.RandomStart;
+    DeviceIn = OptParm.Optimization.Start;
+    DevicePattern = FineGrid(DeviceIn,Period,N/length(DeviceIn),0,1);
 else
     DevicePattern = RandomStart(N,1,Period,...
         OptParm.Optimization.RandomStart,0,0);
@@ -42,7 +43,11 @@ StartPattern = DevicePattern;
 % Define device stack of Nz layers for simulation
 Nz = ceil(OptParm.Geometry.Thickness/OptParm.Simulation.ZGrid);
 DeviceProfile = {[0, ones(1,Nz)*OptParm.Simulation.ZGrid, 0],...
-    [1, Nz, Nz+1]};
+    [1, 2+(1:Nz), 2]};
+% Define textures for each layer
+LayerTextures = cell(1,Nz+2);
+LayerTextures{1} = {nTop};
+LayerTextures{2} = {nBot};
 
 % Generate binarization parameter B
 BVector = GenerateBVector(MaxIterations, OptParm.Optimization.Binarize);
@@ -88,7 +93,7 @@ for iter = iterStart:MaxIterations
         DispPattern{robustIter} = FinalPattern;
         
         % Define textures for each layer
-        
+        LayerTextures(2+(1:Nz))
         
         
         
