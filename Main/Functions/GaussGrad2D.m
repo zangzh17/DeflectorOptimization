@@ -13,9 +13,11 @@ else
 end
 
 % Combine the two pieces of the threshold derivative
-PatternLow(PatternIn>Midpoint) = 0;
-PatternHigh(PatternIn<=Midpoint) = 0;
-PatternDeriv = PatternLow + PatternHigh;
+LowIndex = PatternIn<=Midpoint;
+HighIndex = PatternIn>Midpoint;
+PatternDeriv = zeros(size(PatternIn));
+PatternDeriv(LowIndex) = PatternLow(LowIndex);
+PatternDeriv(HighIndex) = PatternHigh(HighIndex);
 
 % Apply chain rule
 Gradient = PatternDeriv.*GradientIn;

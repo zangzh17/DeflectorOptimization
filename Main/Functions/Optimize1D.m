@@ -1,4 +1,4 @@
-function Gradient = TopoGradient1D(x,OptParm)
+function Gradient = Optimize1D(OptParm)
 
 %Extract common values for easier use
 Wavelengths = OptParm.Input.Wavelength;
@@ -31,23 +31,32 @@ NumPol = length(Polarizations);
 
 % Define grid for the device
 % Grid points per wavelength 
-[xGrid, ~, GridScale] = DefineGrid(OptParm.Simulation.Grid, Period, Wavelength0);
-N = length(xGrid); %Number of x grid points
+[xGrid, ~, xGridScale] = DefineGrid(OptParm.Simulation.Grid, Period, Wavelength0);
+Nx = length(xGrid); %Number of x grid points
 
 % If no starting point is given, generate a random starting point
 if isempty(OptParm.Optimization.Start)
     DeviceIn = OptParm.Optimization.Start;
-    DevicePattern = FineGrid(DeviceIn,Period,N/length(DeviceIn),0,1);
+    DevicePattern = FineGrid(DeviceIn,Period,Nx/length(DeviceIn),0,1);
 else
-    DevicePattern = RandomStart(N,1,Period,...
+    DevicePattern = RandomStart(Nx,1,Period,...
         OptParm.Optimization.RandomStart,0,0);
 end
+% pattern height in unit of levels
+% max:(NLevel -1)
+% min: 0
+% allowing NLevel-1 layers, NLevel levels
 DevicePattern = DevicePattern * (NLevel -1);
 StartPattern = DevicePattern;
 
 % Define device stack of Nz layers for simulation
-Nz = ceil(OptParm.Geometry.Thickness/OptParm.Simulation.ZGrid);
-DeviceProfile = {[0, ones(1,Nz)*OptParm.Simulation.ZGrid, 0],...
+% OptParm.Simulation.ZGrid: number of layers per level
+Nz = ceil(NLevel*OptParm.Simulation.ZGrid);
+% thickness of one layer in nm
+zGridScale = OptParm.Geometry.Thickness/Nz;
+% thickness of one layer in level
+zLevelScale = (NLevel -1)/Nz;
+DeviceProfile = {[0, ones(1,Nz)*zGridScale, 0],...
     [1, 2+(1:Nz), 2]};
 
 % Generate binarization parameter B
@@ -71,15 +80,14 @@ end
 AbsoluteEfficiency = zeros(MaxIterations,NRobustness,NumPol,NumWave);
 RelativeEfficiency = zeros(MaxIterations,NRobustness,NumPol,NumWave);
 % Compute blur radii [in grid units]
-BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/GridScale;
-BlurGrid = OptParm.Optimization.Filter.BlurRadius/GridScale;
+BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/xGridScale;
+BlurGrid = OptParm.Optimization.Filter.BlurRadius/xGridScale;
 
 %Main optimization loop
 for iter = iterStart:MaxIterations
     tic;
-    % initial blurring of radius R=BlurGridLarge
+    % [First filter] to enforce discretization
     FilteredPattern = DensityFilter2D(DevicePattern,BlurGridLarge);
-    % enforce binarization
     BinaryPattern = LevelFilter(FilteredPattern,BVector(iter),0.5);
     
     GradientsAll = cell([NRobustness, 1]);
@@ -88,21 +96,25 @@ for iter = iterStart:MaxIterations
     % Begin robustness loop
     % Can be changed to parfor as necessary
     parfor robustIter = 1:NRobustness
-        % Second filter to model physical edge deviations
+        % [Second filter] to model physical edge deviations
         FilteredPattern2 = GaussFilter2D(BinaryPattern,BlurGrid);
-        FinalPattern = ThreshFilter(FilteredPattern2,BVector(iter),ThresholdVectors(robustIter, iter));
+        FinalPattern = LevelFilter(FilteredPattern2,BVector(iter),ThresholdVectors(robustIter, iter));
         DispPattern{robustIter} = FinalPattern;
         
         % Define textures for each layer
-        LayerTextures = TexturesGen1D(PatternIn,NLevel,GridScale,Nz,nTop,nDevice);
+        LayerTextures = TexturesGen1D(FinalPattern,NLevel,xGridScale,Nz,nTop,nDevice);
         % Initialize empty field matrix
-        FieldProductWeighted = zeros(NumPol,NumWave,OptParm.Simulation.ZGrid,N);
+        FieldProductWeighted = zeros(NumPol,NumWave,Nz,Nx);
+        
+        % Set simulation parameters in Reticolo
+        ReticoloParm = res0;
+        ReticoloParm.res3.npts = [0, ones(1,Nz), 0]; %Number of points to sample field in each layer
+        ReticoloParm.res3.sens = -1; % Default to illumination from below
+        ReticoloParm.res1.champ = 1; % Accurate fields
         
         % Begin polarization loop
         % Can be changed to parfor as necessary
         for polIter = 1:NumPol
-            % Set simulation parameters in Reticolo
-            ReticoloParm = SetReticoloParm(OptParm, Polarizations, polIter);
             for wIter = 1:NumWave
                 % res1 computes the scattering matrices of each layer
                 LayerResults = res1(Wavelengths(wIter),Period,LayerTextures,NFourier,kParallelForward,0,ReticoloParm);
@@ -145,6 +157,9 @@ for iter = iterStart:MaxIterations
                     normalization = (3/2)*sqrt(2/3); % Normalize field for polarizations
                     
                     % res3 computes internal fields for each layer
+                    % the 1st index of fields refer to the z-coordinate
+                    % the 2nd index of fields refer to the x-coordinate and the 3rd to the ycoordinate.
+                    % the 4th index (1-6) of fields refer to [Ex,Ey,Ez,Hx,Hy,Hz]
                     [ForwardField,~,~] = res3(xGrid,yGrid,LayerResults,DeviceProfile,[1,0],ReticoloParm);
                 end
                 
@@ -157,6 +172,7 @@ for iter = iterStart:MaxIterations
                 [AdjointField,~,RefractiveIndex] = res3(xGrid,yGrid,LayerResults,DeviceProfile,AdjointIncidence,ReticoloParm);
                 
                 % Begin to compute 3D gradient by overlap of forward and adjoint fields
+                % Prod = Ex.*Eax + Ey.*Eay + Ez.*Eaz
                 FieldProduct = ForwardField(:,:,:,1).*AdjointField(:,:,:,1) + ...
                     ForwardField(:,:,:,2).*AdjointField(:,:,:,2) + ForwardField(:,:,:,3).*AdjointField(:,:,:,3);
                 
@@ -167,19 +183,72 @@ for iter = iterStart:MaxIterations
             end
         end
         
-        % Compute raw gradient for each pattern averaged over polarization
-        FieldAll = 2*squeeze(mean(mean(sum(FieldProductWeighted,1),2),));
+        % Compute raw gradient for each pattern averaged over pol/wave
+        FieldAll = 2*squeeze(mean(mean(FieldProductWeighted,1),2));
+        
+        % height in number of layers ([0,Nz])
+        HeightLayers = FinalPattern/zLevelScale;
+        % index of layers ([1,Nz])
+        LayerSelect = ceil(HeightLayers);
+        LayerIndex = sub2ind(size(FieldAll),LayerSelect,1:Nx);
+        % choose surface field
+        FieldAll = FieldAll(LayerIndex);
         Gradient = real(-1i*FieldAll);
-            
+        
+        % Back propagate gradient through robustness filters
+        % Second deviations filter
+        Gradient = FilteredGrad2D(Gradient,FilteredPattern2,BVector(iter),ThresholdVectors(robustIter, iter),BlurGrid);
+        % First blur & binarize filter
+        Gradient = FilteredGrad2D(Gradient,FilteredPattern,BVector(iter),0.5,BlurGridLarge);
+        GradientsAll{robustIter} = Gradient;
+    end
+    
+    % Sum gradient over all robustness variants
+    Gradients=zeros(size(DevicePattern));
+    for robustIter = 1:NRobustness
+        Gradients= Gradients + GradientsAll{robustIter};
+    end
+    Gradient = Gradients;
+    
+    % Normalize gradient to step size
+    CurrStepSize = OptParm.Optimization.Gradient.StepSize*OptParm.Optimization.Gradient.StepDecline^iter;
+    Gradient = CurrStepSize*Gradient/max(max(abs(Gradient))); 
+    
+    % Remove unusable terms from normalization
+    Gradient((Gradient+DevicePattern)>NLevel-1) = NLevel-1 -DevicePattern((Gradient+DevicePattern)>NLevel-1);
+    Gradient((DevicePattern+Gradient)<0) = -DevicePattern((DevicePattern+Gradient)<0);
+    Gradient = CurrStepSize*Gradient/max(max(abs(Gradient))); % Re-normalize gradient
+    
+    % Add gradient to device
+    DevicePattern = DevicePattern + Gradient;
+    
+    % Ensure valid geometry       
+    DevicePattern(DevicePattern<0) = 0;                                              
+    DevicePattern(DevicePattern>NLevel-1) = NLevel-1;   
+    
+    % Apply blur if necessary
+    DevicePattern = BlurGeomPostGrad(DevicePattern, iter, OptParm, xGridScale);
+    
+    % Show Progress in Figs
+    [~,RobustInd] = min(abs(OptParm.Optimization.Robustness.EndDeviation));
+    ShowProgress(OptParm, {xGrid,yGrid}, DispPattern{RobustInd}, iter, MaxIterations, AbsoluteEfficiency, RelativeEfficiency, Figs)
+    toc;
+end
+% Compute different pattern varients
+FilteredPattern = DensityFilter2D(DevicePattern,BlurGridLarge);
+BinaryPattern = LevelFilter(FilteredPattern,BVector(iter),0.5);
+FilteredPattern2 = GaussFilter2D(BinaryPattern,BlurGrid);
+FinalPattern = LevelFilter(FilteredPattern2,BVector(iter),0.5);
 
-        
-        
-        
-        
-        
-        
-        
-        
+% Save outputs
+OptOut.BasePattern = DevicePattern;
+OptOut.BinaryPattern = FilteredPattern;
+OptOut.FinalPattern = FinalPattern;
+OptOut.StartPattern = StartPattern;
+OptOut.AbsoluteEfficiency = AbsoluteEfficiency;
+OptOut.RelativeEfficiency = RelativeEfficiency;
+
+end
         
         
         
