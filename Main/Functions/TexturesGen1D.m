@@ -2,7 +2,7 @@ function LayerTextures = TexturesGen1D(PatternIn,NLevel,dx,Nz,nTop,nDevice)
 % Define textures for each layer
 LayerTextures = cell(1,Nz+2);
 LayerTextures{1} = {nTop};
-LayerTextures{2} = {nBot};
+LayerTextures{2} = {nDevice};
 dz = (NLevel-1)/Nz;
 for ii=1:Nz
     h = (ii-1) * dz;

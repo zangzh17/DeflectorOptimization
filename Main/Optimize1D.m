@@ -1,4 +1,4 @@
-function Gradient = Optimize1D(OptParm)
+function OptOut = Optimize1D(OptParm)
 
 %Extract common values for easier use
 Wavelengths = OptParm.Input.Wavelength;
@@ -6,6 +6,7 @@ Period = OptParm.Geometry.Period;
 nBot = OptParm.Geometry.Substrate;
 nTop = OptParm.Geometry.Top;
 nDevice = OptParm.Geometry.Device;
+MaxIterations = OptParm.Optimization.Iterations;
 
 NumWave = length(Wavelengths); 
 Wavelength0 = mean(Wavelengths);
@@ -35,9 +36,9 @@ NumPol = length(Polarizations);
 Nx = length(xGrid); %Number of x grid points
 
 % If no starting point is given, generate a random starting point
-if isempty(OptParm.Optimization.Start)
+if ~isempty(OptParm.Optimization.Start)
     DeviceIn = OptParm.Optimization.Start;
-    DevicePattern = FineGrid(DeviceIn,Period,Nx/length(DeviceIn),0,1);
+    DevicePattern = FineGrid(DeviceIn,Period,Nx/length(DeviceIn),1);
 else
     DevicePattern = RandomStart(Nx,1,Period,...
         OptParm.Optimization.RandomStart,0,0);
@@ -84,7 +85,7 @@ BlurGridLarge = OptParm.Optimization.Filter.BlurRadiusLarge/xGridScale;
 BlurGrid = OptParm.Optimization.Filter.BlurRadius/xGridScale;
 
 %Main optimization loop
-for iter = iterStart:MaxIterations
+for iter = 1:MaxIterations
     tic;
     % [First filter] to enforce discretization
     FilteredPattern = DensityFilter2D(DevicePattern,BlurGridLarge);
