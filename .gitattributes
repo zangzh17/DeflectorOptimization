@@ -24,3 +24,4 @@
 *.jpg -crlf -diff -merge
 *.png -crlf -diff -merge
 *.bmp -crlf -diff -merge
+*.fsp -crlf -diff -merge
