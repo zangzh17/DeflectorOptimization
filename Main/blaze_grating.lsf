@@ -14,23 +14,22 @@ image(getdata("index","x")*1e6,
       "x (um)", "y (um)","Index profile");
 
 #monitors;
-select("grating_R");
 select("grating_T");
 set("make plots",0);
 runanalysis;
 
-m="grating_R";
+m="grating_T";
 theta=getdata(m,"theta");
-R_grating=getdata(m,"T_grating");
-R=getdata(m,"T");
+T_grating=getdata(m,"T_grating");
+T=getdata(m,"T");
 
 
-plot(theta,R_grating,
+plot(theta,T_grating,
     "angle (degrees)",
     "fraction of reflected power",
     "order strength",
     "plot points");
 
-?"Total reflection: " +num2str(R);
-?"Reflection to each order: [theta(i), R(i)]";
-?num2str([theta, R_grating]);
+?"Total reflection: " +num2str(T);
+?"Reflection to each order: [theta(i), T(i)]";
+?num2str([theta, T_grating]);
