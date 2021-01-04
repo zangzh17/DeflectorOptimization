@@ -1,5 +1,5 @@
-function FOM = FigureOfMerit1D(level,OptParm)
-% range of level: [0,OptParm.Geometry.Level-1], integers
+function FOM = FomReticolo1D(height,OptParm)
+% range of height: [0,OptParm.Geometry.Level-1], integers
 nBot = OptParm.Geometry.Substrate;
 nTop = OptParm.Geometry.Top;
 nDevice = OptParm.Geometry.Device;
@@ -29,7 +29,7 @@ LayerTextures = cell(1,OptParm.Geometry.Level + 1);
 LayerTextures{1} = {nTop};
 LayerTextures{end} = {nBot};
 for ii=1:OptParm.Geometry.Level-1
-    index = (level(:)'>ii-1);
+    index = (height(:)'>ii-1);
     index = [index,~index(end)];
     index = diff(index);
     lowIndexPos = find(index==1)*OptParm.Geometry.Pixel;
