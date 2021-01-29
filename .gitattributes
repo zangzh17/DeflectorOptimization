@@ -23,5 +23,6 @@
 *.pdf -crlf -diff -merge
 *.jpg -crlf -diff -merge
 *.png -crlf -diff -merge
+*.dat -crlf -diff -merge
 *.bmp -crlf -diff -merge
 *.fsp -crlf -diff -merge
