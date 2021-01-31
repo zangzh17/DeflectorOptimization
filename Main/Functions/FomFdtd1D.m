@@ -1,13 +1,11 @@
 function FOM = FomFdtd1D(InPattern,OptParm,sim_file_name)
-% h: fdtd_handle
 % range of height: [0,OptParm.Geometry.Level-1], integers
-%% Open FDTD session
+% h: fdtd handle
 
-h=appopen('fdtd');
-sim_file_path = getAttachedFilesFolder(sim_file_name);
-
+%% set fdtd
+h = appopen('fdtd');
 %Pass the path variables to FDTD
-appputvar(h,'sim_file_path',sim_file_path);
+appputvar(h,'sim_file_path',pwd);
 appputvar(h,'sim_file_name',sim_file_name);
 code='cd(sim_file_path);load(sim_file_name);';
 appevalscript(h,code);
@@ -112,6 +110,6 @@ for robustIter = 1:NRobustness
         end
     end
 end
-FOM = OptParm.Optimization.Robustness.Weights*mean(mean(AbsEff,3),2);
 appclose(h);
+FOM = OptParm.Optimization.Robustness.Weights*mean(mean(AbsEff,3),2);
 end
